@@ -1,37 +1,457 @@
-## Welcome to GitHub Pages
 
-You can use the [editor on GitHub](https://github.com/NCRC-git/ozmap/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Opportunity Zones & Gentrification</title>
+	<meta name='robots' content='noindex, nofollow'>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+	<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.4.1/mapbox-gl-geocoder.min.js'></script>
+	<link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.4.1/mapbox-gl-geocoder.css' type='text/css' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v1.2.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v1.2.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin:0; padding:0; }
+        h2, h3 {
+            margin: 10px;
+            font-size: 1.4em;
+        }
+        h3 {
+            font-size: 1em;
+        }
+        p {
+            font-size: 0.85em;
+            margin: 10px;
+            text-align: left;
+        }
+		#map { 
+			position:absolute; 
+			top:0; 
+			bottom:0; 
+			width:100%; 
+		}
+		.map-overlay {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.7);
+            margin-right: 20px;
+            font-family: Arial, sans-serif;
+            overflow: auto;
+            border-radius: 3px;
+        }
+		#features {
+            top: 0;
+            height: 450px;
+            margin-top: 20px;
+            width: 225px;
+        }
+        #legend {
+            padding: 10px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+            line-height: 18px;
+            height: 55px;
+            margin-bottom: 40px;
+            width: 130px;
+        }
+        .legend-key {
+            display:inline-block;
+            border-radius: 20%;
+            margin-top: 0px;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+           	vertical-align: center;
+           	
+        }
+    </style>
+</head>
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+<body>
 
-### Markdown
+<style>
+	.mapboxgl-popup {
+		max-width: 400px;
+	    font: 14px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+	}
+	#menu {
+		
+		position: absolute;
+		z-index: 1;
+		top: 70%; 
+		right: 0px;
+		border-radius: 0;
+		line-height: 20px;
+		width: 140px;
+		
+		font-family: 'Open Sans', sans-serif;
+	}
+	 
+	#menu a {
+		font-size: 16px;
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+		display: inline-block;
+		margin: 5px;
+		padding: 0px;
+		padding: 5px;
+		border-radius: 5%;
+		text-decoration: none;
+		border-bottom: 1px solid rgba(0,0,0,0.25);
+		box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+		text-align: left;
+	}
+	 
+	#menu a:last-child {
+		border: none;
+	}
+	 
+	#menu a:hover {
+		background-color: #f8f8f8;
+		color: #404040;
+	}
+	 
+	#menu a.active {
+		background-color: #3887be;
+		color: #ffffff;
+	}
+	 
+	#menu a.active:hover {
+		background: #3074a4;
+	}
+</style>
 
-```markdown
-Syntax highlighted code block
+<nav id="menu"></nav>
+<div id='map'></div>
 
-# Header 1
-## Header 2
-### Header 3
 
-- Bulleted
-- List
+<script>
 
-1. Numbered
-2. List
+mapboxgl.accessToken = 'pk.eyJ1IjoiamVkbGViaSIsImEiOiJjanhhc3M4NnYwMmxsM3lyODlxYTFhOGRxIn0.746AmyW45uwRPeUy1PczOg';
 
-**Bold** and _Italic_ and `Code` text
+var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/jedlebi/cjxm5zbtf1iwe1doc78szgy13',
+    center: [-100.04, 38.907],
+    zoom: 3
+});
 
-[Link](url) and ![Image](src)
-```
+map.on('load', function () {
+	
+	// make a pointer cursor
+    map.getCanvas().style.cursor = 'default';
+	
+    // continental US
+    // map.fitBounds([[-130.283740, 20.221380], [-53.815326, 50.998720]]);
+	
+	// Washington, DC
+	map.fitBounds([[-77.493555, 38.724826], [-76.643236, 39.083450]]);
+	
+    // define layer names
+    var layers = ['Central City Opportunity Zone', 'Eligible', 'Gentrified'];
+    var colors = ['#4b3295', '#828282', '#1b2131'];
+	var toggleableLayerIds = [ 'Central City Opportunity Zone', 'Eligible Tracts', 'Gentrified Tracts' ];
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+	// Round values to nearest whole integer and include thousand seperators.
+	function round(num) {
+		return num.toFixed(0).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,')
+	}
+	
+	// Round values to nearest second decimal and include thousand seperators.
+	function decimalRound(num) {
+		return num.toFixed(1).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,')
+	}
+		
+    // When a click event occurs on a feature in the layer, open a popup at the
+    // location of the click, with description HTML from its properties.
+    map.on('click', 'tracts-west', function (e) {		
+		new mapboxgl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML("<h3><strong>" + 
+			e.features[0].properties.NEW_PLACE + "<br>" + "GEOID: " +  e.features[0].properties.GEOID +
+			"<br>" + "<br>" +
+			"<font color=#1b2131>" + e.features[0].properties.G_Status + "</font>" +
+			"<br>" +
+			"<font color=#af3131>" + e.features[0].properties.OZone + "</font>" +
+			"</strong></h3>" + 
+			 
+			
+			"<p>" +
+			
+			"<strong>" + 'Population:' + "</strong>" +
+			"<br>" + 
+			'  2010:   ' + round(e.features[0].properties.pop_10) + 
+			"<br>" + 
+			'  2017:   ' + round(e.features[0].properties.pop_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + 'Median Household Income:' + "</strong>" +
+			"<br>" +
+			'  2010:   $' + round(e.features[0].properties.mhi_10) + 
+			"<br>" + 
+			'  2017:   $' + round(e.features[0].properties.mhi_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + 'Median Home Value:' + "</strong>" +
+			"<br>" +
+			'  2010:   $' + round(e.features[0].properties.mhv_10) + 
+			"<br>" + 
+			'  2017:   $' + round(e.features[0].properties.mhv_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + '% of Population with a 4-Year Degree:' + "</strong>" +
+			"<br>" +
+			'  2012:   ' + decimalRound(e.features[0].properties.pcol_12) + "%" +
+			"<br>" + 
+			'  2017:   ' + decimalRound(e.features[0].properties.pcol_17) + "%" +
+			
+			"</p>")
+            .addTo(map);
+    });
+	
+	map.on('click', 'tracts-midwest', function (e) {
+        new mapboxgl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML("<h3><strong>" + 
+			e.features[0].properties.NEW_PLACE + "<br>" + "GEOID: " +  e.features[0].properties.GEOID +
+			"<br>" + "<br>" +
+			"<font color=#1b2131>" + e.features[0].properties.G_Status + "</font>" +
+			"<br>" +
+			"<font color=#af3131>" + e.features[0].properties.OZone + "</font>" +
+			"</strong></h3>" + 
+			 
+			
+			"<p>" +
+			
+			"<strong>" + 'Population:' + "</strong>" +
+			"<br>" + 
+			'  2010:   ' + round(e.features[0].properties.pop_10) + 
+			"<br>" + 
+			'  2017:   ' + round(e.features[0].properties.pop_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + 'Median Household Income:' + "</strong>" +
+			"<br>" +
+			'  2010:   $' + round(e.features[0].properties.mhi_10) + 
+			"<br>" + 
+			'  2017:   $' + round(e.features[0].properties.mhi_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + 'Median Home Value:' + "</strong>" +
+			"<br>" +
+			'  2010:   $' + round(e.features[0].properties.mhv_10) + 
+			"<br>" + 
+			'  2017:   $' + round(e.features[0].properties.mhv_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + '% of Population with a 4-Year Degree:' + "</strong>" +
+			"<br>" +
+			'  2012:   ' + decimalRound(e.features[0].properties.pcol_12) + "%" +
+			"<br>" + 
+			'  2017:   ' + decimalRound(e.features[0].properties.pcol_17) + "%" +
+			
+			"</p>")
+            .addTo(map);
+    });
+	
+	map.on('click', 'tracts-northeast', function (e) {
+        new mapboxgl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML("<h3><strong>" + 
+			e.features[0].properties.NEW_PLACE + "<br>" + "GEOID: " + e.features[0].properties.GEOID +
+			"<br>" + "<br>" +
+			"<font color=#1b2131>" + e.features[0].properties.G_Status + "</font>" +
+			"<br>" +
+			"<font color=#af3131>" + e.features[0].properties.OZone + "</font>" +
+			"</strong></h3>" + 
+			 
+			
+			"<p>" +
+			
+			"<strong>" + 'Population:' + "</strong>" +
+			"<br>" + 
+			'  2010:   ' + round(e.features[0].properties.pop_10) + 
+			"<br>" + 
+			'  2017:   ' + round(e.features[0].properties.pop_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + 'Median Household Income:' + "</strong>" +
+			"<br>" +
+			'  2010:   $' + round(e.features[0].properties.mhi_10) + 
+			"<br>" + 
+			'  2017:   $' + round(e.features[0].properties.mhi_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + 'Median Home Value:' + "</strong>" +
+			"<br>" +
+			'  2010:   $' + round(e.features[0].properties.mhv_10) + 
+			"<br>" + 
+			'  2017:   $' + round(e.features[0].properties.mhv_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + '% of Population with a 4-Year Degree:' + "</strong>" +
+			"<br>" +
+			'  2012:   ' + decimalRound(e.features[0].properties.pcol_12) + "%" +
+			"<br>" + 
+			'  2017:   ' + decimalRound(e.features[0].properties.pcol_17) + "%" +
+			
+			"</p>")
+            .addTo(map);
+    });
+	
+	map.on('click', 'tracts-south', function (e) {
+        new mapboxgl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML("<h3><strong>" + 
+			e.features[0].properties.NEW_PLACE + "<br>" + "GEOID: " + e.features[0].properties.GEOID +
+			"<br>" + "<br>" +
+			"<font color=#1b2131>" + e.features[0].properties.G_Status + "</font>" +
+			"<br>" +
+			"<font color=#af3131>" + e.features[0].properties.OZone + "</font>" +
+			"</strong></h3>" + 
+			 
+			
+			"<p>" +
+			
+			"<strong>" + 'Population:' + "</strong>" +
+			"<br>" + 
+			'  2010:   ' + round(e.features[0].properties.pop_10) + 
+			"<br>" + 
+			'  2017:   ' + round(e.features[0].properties.pop_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + 'Median Household Income:' + "</strong>" +
+			"<br>" +
+			'  2010:   $' + round(e.features[0].properties.mhi_10) + 
+			"<br>" + 
+			'  2017:   $' + round(e.features[0].properties.mhi_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + 'Median Home Value:' + "</strong>" +
+			"<br>" +
+			'  2010:   $' + round(e.features[0].properties.mhv_10) + 
+			"<br>" + 
+			'  2017:   $' + round(e.features[0].properties.mhv_17) +
+			"<br>" +
+			
+			"<br>" +
+			"<strong>" + '% of Population with a 4-Year Degree:' + "</strong>" +
+			"<br>" +
+			'  2012:   ' + decimalRound(e.features[0].properties.pcol_12) + "%" +
+			"<br>" + 
+			'  2017:   ' + decimalRound(e.features[0].properties.pcol_17) + "%" +
+			
+			"</p>")
+            .addTo(map);
+    });
 
-### Jekyll Themes
+    // Change the cursor to a pointer when the mouse is over the layer.
+    map.on('mouseenter', 'tracts-northeast', function () {
+        map.getCanvas().style.cursor = 'pointer';
+    });
+	map.on('mouseenter', 'tracts-midwest', function () {
+        map.getCanvas().style.cursor = 'pointer';
+    });
+	map.on('mouseenter', 'tracts-west', function () {
+        map.getCanvas().style.cursor = 'pointer';
+    });
+	map.on('mouseenter', 'tracts-south', function () {
+        map.getCanvas().style.cursor = 'pointer';
+    });
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/NCRC-git/ozmap/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+    // Change it back to a pointer when it leaves.
+    map.on('mouseleave', 'tracts-northeast', function () {
+        map.getCanvas().style.cursor = '';
+    });
+	map.on('mouseleave', 'tracts-midwest', function () {
+        map.getCanvas().style.cursor = '';
+    });
+	map.on('mouseleave', 'tracts-west', function () {
+        map.getCanvas().style.cursor = '';		
+    });
+	map.on('mouseleave', 'tracts-south', function () {
+        map.getCanvas().style.cursor = '';
+    });
+	
+	// Add a search bar to the map.
+	map.addControl(new MapboxGeocoder({
+		accessToken: mapboxgl.accessToken,
+		mapboxgl: mapboxgl
+	}));
+	
+	// Add in option for full-screen.
+	map.addControl(new mapboxgl.FullscreenControl());
+	
+	// Add geolocate control to the map.
+	map.addControl(new mapboxgl.GeolocateControl({
+		positionOptions: {
+			enableHighAccuracy: true
+		},
+		trackUserLocation: true
+	}));
 
-### Support or Contact
+	for (var i = 0; i < toggleableLayerIds.length; i++) {
+		var id = toggleableLayerIds[i];
+ 		var color = colors[i];
+        var item = document.createElement('div');
+ 		var key = document.createElement('span');
+        key.className = 'legend-key';
+        key.style.backgroundColor = color;
+		var link = document.createElement('a');
+		link.href = '#';
+		link.className = 'active';
+		link.textContent = id;
+ 
+		link.onclick = function (e) {
+			var clickedLayer = this.textContent;
+			e.preventDefault();
+			e.stopPropagation();
+ 
+			var visibility = map.getLayoutProperty(clickedLayer, 'visibility');
+			
+			 
+			if (visibility === 'visible') {
+				map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+				this.className = '';
+			} else {
+				this.className = 'active';
+				map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
+			}
+		};
+ 		
+		var fills = document.getElementById('menu');
+		fills.appendChild(key);
+		fills.appendChild(link);
+	}
 
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+ // create legend <div class='map-overlay' id='legend'></div>
+ //   for (i=0; i<layers.length; i++) {
+ //       var layer = layers[i];
+ //       var color = colors[i];
+ //       var item = document.createElement('div');
+ //       var key = document.createElement('span');
+ //       key.className = 'legend-key';
+ //       key.style.backgroundColor = color;
+ //
+    //    var value = document.createElement('span');
+    //    value.innerHTML = layer;
+    //    item.appendChild(key);
+    //    item.appendChild(value);
+    //    legend.appendChild(item);
+ //   }
+
+});
+
+</script>
+</body>
+</html>
