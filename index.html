@@ -399,6 +399,9 @@ map.on('load', function () {
 		trackUserLocation: true
 	}));
 
+	// Add zoom and rotation controls to the map.
+	map.addControl(new mapboxgl.NavigationControl());
+
 	for (var i = 0; i < toggleableLayerIds.length; i++) {
 		var id = toggleableLayerIds[i];
  		var color = colors[i];
