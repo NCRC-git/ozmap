@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -51,7 +52,7 @@
             line-height: 18px;
             height: 55px;
             margin-bottom: 40px;
-            width: 130px;
+            width: 140px;
         }
         .legend-key {
             display:inline-block;
@@ -77,11 +78,11 @@
 		
 		position: absolute;
 		z-index: 1;
-		top: 70%; 
-		right: 0px;
+		top: 10%; 
+		left: 20px;
 		border-radius: 0;
 		line-height: 20px;
-		width: 140px;
+		width: 120px;
 		
 		font-family: 'Open Sans', sans-serif;
 	}
@@ -422,7 +423,7 @@ map.on('load', function () {
 			var visibility = map.getLayoutProperty(clickedLayer, 'visibility');
 			
 			 
-			if (visibility === 'visible') {
+			if (visibility != 'none') {
 				map.setLayoutProperty(clickedLayer, 'visibility', 'none');
 				this.className = '';
 			} else {
